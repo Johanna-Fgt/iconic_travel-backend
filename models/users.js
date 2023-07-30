@@ -11,6 +11,12 @@ const DEFAULT_LANGUAGE = 'FR';
 const DEFAULT_HOBBY = 'voyage';
 const DEFAULT_DESCRIPTION = 'Je dois mettre à jour mon profil !';
 
+const citySchema = mongoose.Schema({
+	name: String,
+	latitude: Number,
+	longitude: Number,
+});
+
 const travelSchema = mongoose.Schema({
 	destination: String,
 	startDate: Date,
@@ -35,7 +41,7 @@ const userSchema = mongoose.Schema({
 	token: String,
 	avatar: { type: String, default: DEFAULT_PHOTO },
 	description: { type: String, default: DEFAULT_DESCRIPTION },
-	city: { type: String, default: null }, // if no city registered display create profil screen at connexion ?
+	city: citySchema,
 	spokenLanguages: [{ type: String, default: DEFAULT_LANGUAGE }],
 	hobbies: [{ type: String, default: DEFAULT_HOBBY }],
 	travels: [travelSchema],

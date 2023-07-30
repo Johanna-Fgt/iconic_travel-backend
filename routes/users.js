@@ -13,35 +13,38 @@ const cloudinary = require('cloudinary').v2;
 const fs = require('fs');
 
 /* POST /signup*/
-router.post('/signup', (req, res) => {
-	const { firstname, lastname, dateOfBirth, email, password } = req.body;
+router.post('/signup', async (req, res) => {
+	console.log(req.body);
+	const {
+		firstname,
+		lastname,
+		dateOfBirth,
+		email,
+		password,
+		description,
+		avatar,
+		city,
+		spokenLanguages,
+		hobbies,
+	} = req.body;
 
-	if (
-		!checkBody(req.body, [
-			'firstname',
-			'lastname',
-			'dateOfBirth',
-			'email',
-			'password',
-		])
-	) {
-		res.status(403).json({ result: false, error: 'Missing or empty fields' });
-		return;
-	}
-
-	//https://www.reactnativeschool.com/how-to-upload-images-from-react-native
-
-	// 	const photoPath = `./tmp/${uniqid()}.jpg`;
-	// 	const resultMove = await req.files.photoFromFront.mv(photoPath);
-
-	// 	if (!resultMove) {
-	// 		const resultCloudinary = await cloudinary.uploader.upload(photoPath);
-
-	// 		fs.unlinkSync(photoPath);
-	// 		res.json({ result: true, url: resultCloudinary.secure_url });
-	// 	} else {
-	// 		res.json({ result: false, error: resultMove });
-	// 	}
+	// TODO : A TESTER
+	// if missing datas or unsaved avatar - return
+	// if (
+	// 	!checkBody(req.body, [
+	// 		'firstname',
+	// 		'lastname',
+	// 		'dateOfBirth',
+	// 		'email',
+	// 		'avatar',
+	// 		'password',
+	// 		'city',
+	// 		'hobbies',
+	// 	])
+	// ) {
+	// 	res.status(403).json({ result: false, error: 'Missing or empty fields' });
+	// 	return;
+	// }
 
 	// Check if the user has not already been registered
 	User.findOne({ email: { $regex: new RegExp(email, 'i') } }).then((data) => {
@@ -55,6 +58,11 @@ router.post('/signup', (req, res) => {
 				email,
 				password: hash,
 				token: uid2(32),
+				avatar,
+				description,
+				city,
+				spokenLanguages,
+				hobbies,
 			});
 
 			newUser.save().then((newDoc) => {
@@ -65,6 +73,23 @@ router.post('/signup', (req, res) => {
 			res.status(409).json({ result: false, error: 'Already have an account' });
 		}
 	});
+});
+
+/* POST /upload */
+router.post('/upload', async (req, res) => {
+	// save avatar in temporary folder
+	const photoPath = `./tmp/${uniqid()}.jpg`;
+	const resultMove = await req.files.avatar.mv(photoPath);
+
+	if (!resultMove) {
+		// upload avatar to cloudinary and remove from temporary folder
+		const resultCloudinary = await cloudinary.uploader.upload(photoPath);
+		fs.unlinkSync(photoPath);
+
+		res.json({ result: true, url: resultCloudinary.secure_url });
+	} else {
+		res.json({ result: false, error: resultMove });
+	}
 });
 
 /* POST /signin*/
