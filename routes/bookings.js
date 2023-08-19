@@ -174,43 +174,43 @@ router.get('/:token', (req, res) => {
 });
 
 /* GET /exists/:traveler/:host - if exists returns bookings between two users*/
-router.get(`/exists/:traveler/:host`, (req, res) => {
-	Booking.findOne({
-		traveler: req.params.traveler,
-		host: req.params.host,
-	}).then((data) => {
-		if (data) {
-			res.json({
-				result: true,
-				booking: data,
-			});
-		} else {
-			res.json({
-				result: false,
-				error: 'Aucun contact trouvé',
-			});
-		}
-	});
-});
+// router.get(`/exists/:traveler/:host`, (req, res) => {
+// 	Booking.findOne({
+// 		traveler: req.params.traveler,
+// 		host: req.params.host,
+// 	}).then((data) => {
+// 		if (data) {
+// 			res.json({
+// 				result: true,
+// 				booking: data,
+// 			});
+// 		} else {
+// 			res.json({
+// 				result: false,
+// 				error: 'Aucun contact trouvé',
+// 			});
+// 		}
+// 	});
+// });
 
 /* GET /traveler/:token - get user's chatchannels */
-router.get(`/traveler/:token`, (req, res) => {
-	User.findOne({ token: req.params.token })
-		.populate('chatChannels')
-		.then((data) => {
-			if (data) {
-				res.json({
-					result: true,
-					chats: data.chatChannels,
-				});
-			} else {
-				res.json({
-					result: false,
-					error: 'Aucun contact trouvé',
-				});
-			}
-		});
-});
+// router.get(`/traveler/:token`, (req, res) => {
+// 	User.findOne({ token: req.params.token })
+// 		.populate('chatChannels')
+// 		.then((data) => {
+// 			if (data) {
+// 				res.json({
+// 					result: true,
+// 					chats: data.chatChannels,
+// 				});
+// 			} else {
+// 				res.json({
+// 					result: false,
+// 					error: 'Aucun contact trouvé',
+// 				});
+// 			}
+// 		});
+// });
 
 /* PATCH /update/:bookingId - update done */
 router.patch('/update/:bookingId', (req, res) => {

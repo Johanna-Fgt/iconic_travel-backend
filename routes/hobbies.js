@@ -2,11 +2,16 @@ var express = require('express');
 var router = express.Router();
 // MODELS
 const Hobby = require('../models/hobbies');
+// UTILS
+const { stringIsFilled } = require('../modules/validators');
 
 /* POST / - add a new hobby if does not already exists in db*/
 router.post('/new', async (req, res) => {
 	const { hobby } = req.body;
-
+	console.log('H ', hobby);
+	if (!stringIsFilled(hobby)) {
+		return res.status(403).json({ result: false, error: 'Invalid entry' });
+	}
 	Hobby.findOne({ hobby }).then((data) => {
 		if (data) return res.json({ result: false, error: 'Already exists' });
 	});

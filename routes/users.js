@@ -3,7 +3,15 @@ var router = express.Router();
 // MODELS
 const User = require('../models/users');
 // UTILS
-const { checkBody } = require('../modules/checkBody');
+const {
+	stringIsFilled,
+	stringsAreNotFilled,
+	emailIsValid,
+	checkBody,
+	ckeckTypes,
+	isDate,
+	isNumber,
+} = require('../modules/validators');
 // AUTHENTICATION
 const uid2 = require('uid2');
 const bcrypt = require('bcrypt');
@@ -26,6 +34,15 @@ router.post('/signup', async (req, res) => {
 		spokenLanguages,
 		hobbies,
 	} = req.body;
+
+	if (
+		stringsAreNotFilled([firstname, lastname, password, city.name]) ||
+		!isNumber(city.latitude) ||
+		!isNumber(city.longitude) ||
+		!isDate(dateOfBirth) ||
+		!emailIsValid(email)
+	)
+		return res.status(403).json({ result: false, error: 'Invalid entry' });
 
 	// Check if the user has not already been registered
 	User.findOne({ email: { $regex: new RegExp(email, 'i') } }).then((data) => {
@@ -76,9 +93,14 @@ router.post('/upload', async (req, res) => {
 /* POST /signin*/
 router.post('/signin', (req, res) => {
 	const { email, password } = req.body;
+
 	if (!checkBody(req.body, ['email', 'password'])) {
 		res.status(403).json({ result: false, error: 'Missing or empty fields' });
 		return;
+	}
+
+	if (!stringIsFilled(password) || !emailIsValid(email)) {
+		return res.status(403).json({ result: false, error: 'Invalid entry' });
 	}
 
 	User.findOne({ email: { $regex: new RegExp(email, 'i') } }).then((data) => {
@@ -86,7 +108,7 @@ router.post('/signin', (req, res) => {
 			res.json({ result: true, data });
 		} else {
 			res
-				.status(404)
+				.status(401)
 				.json({ result: false, error: 'User not found or wrong password' });
 		}
 	});
@@ -147,6 +169,10 @@ router.put('/hosting/:token', async (req, res) => {
 /* PUT /password/:token - update only password property*/
 router.put('/password/:token', async (req, res) => {
 	const { password } = req.body;
+
+	if (!stringIsFilled(password))
+		return res.status(403).json({ result: false, error: 'Invalid entry' });
+
 	const user = await User.findOne({ token: req.params.token });
 
 	user.password = bcrypt.hashSync(password, 10);
@@ -166,6 +192,12 @@ router.put('/update/:token', async (req, res) => {
 	const user = await User.findOne({ token: req.params.token });
 	const keys = Object.keys(req.body);
 
+	if (keys.find((key) => !ckeckTypes(req.body, user, key)))
+		return res.status(400).json({
+			result: false,
+			error: `Problem with update due to bad value type`,
+		});
+
 	keys.forEach((key) => {
 		user[key] = req.body[key];
 	});
@@ -174,33 +206,10 @@ router.put('/update/:token', async (req, res) => {
 
 	if (!newUser)
 		return res
-			.status(409)
+			.status(404)
 			.json({ result: false, error: 'Can not update user' });
 
 	res.json({ result: true, data: newUser });
-});
-
-/* PUT /hosting/:token - update only canHost property*/
-router.put('/booking/:token/:bookingId', async (req, res) => {
-	const user = await User.findOne({ token: req.params.token });
-
-	if (user.bookings.includes(req.params.bookingId)) {
-		res.json({
-			result: false,
-			error: 'Booking déjà enregistré !',
-		});
-	} else {
-		user.bookings.push(req.params.bookingId);
-
-		const newUser = await user.save();
-
-		if (!newUser)
-			return res
-				.status(409)
-				.json({ result: false, error: 'Can not add booking id' });
-
-		res.json({ result: true, canHost: newUser.canHost });
-	}
 });
 
 /* DELETE /delete/:token - remove all data from user in db */
