@@ -1,9 +1,10 @@
 var express = require('express');
 var router = express.Router();
 const Pusher = require('pusher');
+// MODELS
 const ChatChannel = require('../models/chatChannels');
-
 const User = require('../models/users');
+// PUSHER
 const pusher = new Pusher({
 	appId: process.env.PUSHER_APPID,
 	key: process.env.PUSHER_KEY,
@@ -12,7 +13,7 @@ const pusher = new Pusher({
 	useTLS: true,
 });
 
-// Join chat
+/* PUT /:chatname/:username - join chat */
 router.put('/:chatname/:username', async (req, res) => {
 	await pusher.trigger(req.params.chatname, 'join', {
 		username: req.params.username,
@@ -21,7 +22,7 @@ router.put('/:chatname/:username', async (req, res) => {
 	res.json({ result: true });
 });
 
-// Leave chat
+/* DELETE /:chatname/:username - leave chat */
 router.delete('/:chatname/:username', async (req, res) => {
 	await pusher.trigger(req.params.chatname, 'leave', {
 		username: req.params.username,
@@ -30,7 +31,7 @@ router.delete('/:chatname/:username', async (req, res) => {
 	res.json({ result: true });
 });
 
-// Send message
+/* POST /message - send message */
 router.post('/message', async (req, res) => {
 	const { text, username, chatname, createdAt } = req.body;
 	await pusher.trigger(chatname, 'message', req.body);
@@ -43,11 +44,12 @@ router.post('/message', async (req, res) => {
 	res.json({ result: true });
 });
 
+/* GET /previousMessages/:chatname - previous messages from chat */
 router.get('/previousMessages/:chatname', (req, res) => {
-	ChatChannel.findOne({ name: req.params.chatname }).then((resp) => {
+	ChatChannel.findOne({ name: req.params.chatname }).then((chat) => {
 		res.json({
 			result: true,
-			messages: resp.messages,
+			messages: chat.messages,
 		});
 	});
 });
@@ -59,16 +61,16 @@ router.get(`/:token`, (req, res) => {
 			path: 'chatChannels',
 			populate: [{ path: 'traveler' }, { path: 'host' }],
 		})
-		.then((data) => {
-			if (data) {
+		.then((user) => {
+			if (user) {
 				res.json({
 					result: true,
-					chats: data.chatChannels,
+					chats: user.chatChannels,
 				});
 			} else {
 				res.json({
 					result: false,
-					error: 'Aucun contact trouvé',
+					error: 'No contact found',
 				});
 			}
 		});
