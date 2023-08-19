@@ -6,7 +6,7 @@ const ERRORS = {
 };
 
 const DEFAULT_PHOTO =
-	'https://res.cloudinary.com/dvmipcwy7/image/upload/v1690571975/cld-sample.jpg';
+	'https://res.cloudinary.com/dvmipcwy7/image/upload/v1690571975/ezulphnetoa65bodxzwn.jpg';
 const DEFAULT_LANGUAGE = 'FR';
 const DEFAULT_HOBBY = 'voyage';
 const DEFAULT_DESCRIPTION = 'Je dois mettre à jour mon profil !';
@@ -15,13 +15,6 @@ const citySchema = mongoose.Schema({
 	name: String,
 	latitude: Number,
 	longitude: Number,
-});
-
-const travelSchema = mongoose.Schema({
-	destination: String,
-	startDate: Date,
-	endDate: Date,
-	hostId: mongoose.Schema.ObjectId,
 });
 
 const userSchema = mongoose.Schema({
@@ -39,13 +32,14 @@ const userSchema = mongoose.Schema({
 		required: [true, ERRORS.required],
 	},
 	token: String,
-	avatar: { type: String, default: DEFAULT_PHOTO },
+	avatarUrl: { type: String, default: DEFAULT_PHOTO },
 	description: { type: String, default: DEFAULT_DESCRIPTION },
 	city: citySchema,
 	spokenLanguages: [{ type: String, default: DEFAULT_LANGUAGE }],
 	hobbies: [{ type: String, default: DEFAULT_HOBBY }],
-	travels: [travelSchema],
-	isHosting: { type: Boolean, default: true },
+	bookings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'bookings' }],
+	chatChannels: [{ type: mongoose.Schema.Types.ObjectId, ref: 'chatChannels' }],
+	canHost: { type: Boolean, default: false },
 });
 
 const User = mongoose.model('users', userSchema);
