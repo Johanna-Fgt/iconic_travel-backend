@@ -73,25 +73,6 @@ router.post('/signup', async (req, res) => {
 	});
 });
 
-/* POST /upload */
-// router.post('/upload', async (req, res) => {
-// 	// save avatar in temporary folder
-// 	const photoPath = `./tmp/${uniqid()}.jpg`;
-// 	const resultMove = await req.files.avatar.mv(photoPath);
-
-// 	if (!resultMove) {
-// 		// upload avatar to cloudinary and remove from temporary folder
-// 		const resultCloudinary = await cloudinary.uploader.upload(photoPath);
-// 		// const resultCloudinary = await cloudinary.uploader.upload_stream(photoPath);
-
-// 		fs.unlinkSync(photoPath);
-
-// 		res.json({ result: true, url: resultCloudinary.secure_url });
-// 	} else {
-// 		res.json({ result: false, error: resultMove });
-// 	}
-// });
-
 /* POST /signin*/
 router.post('/signin', (req, res) => {
 	const { email, password } = req.body;
