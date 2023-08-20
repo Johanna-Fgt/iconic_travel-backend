@@ -36,7 +36,7 @@ router.post('/new', async (req, res) => {
 /* GET / - return all hobbies*/
 router.get('/', (req, res) => {
 	Hobby.find().then((hobbies) =>
-		res.json({ result: true, hobbiesList: hobbies.map((el) => el.hobby) })
+		res.json({ result: true, hobbiesList: hobbies?.map((el) => el.hobby) })
 	);
 });
 

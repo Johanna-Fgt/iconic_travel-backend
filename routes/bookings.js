@@ -1,99 +1,58 @@
 var express = require('express');
 var router = express.Router();
-
-const Booking = require('../models/bookings');
+// MODELS
 const User = require('../models/users');
+const Booking = require('../models/bookings');
 const ChatChannel = require('../models/chatChannels');
+// UTILS
+const { getDates } = require('../modules/dates');
 
 /* POST /request - create a booking request */
-router.post('/request', async (req, res) => {
-	const {
-		traveler,
-		host,
-		startDate,
-		endDate,
-		adultsNumber,
-		childrenNumber,
-		babiesNumber,
-	} = req.body.travelDatas;
+router.post('/request/:travelerToken/:hostEmail', async (req, res) => {
+	const { travelerToken, hostEmail } = req.params;
+	const { startDate, endDate, adultsNumber, childrenNumber, babiesNumber } =
+		req.body;
 
-	//  Check if traveler has already request a booking to host or reverse
-	const sameBookings = await Booking.find({ $and: [{ traveler }, { host }] });
-	const reverseBookings = await Booking.find({
-		$and: [{ traveler: host }, { host: traveler }],
+	// Get ids
+	const travelerFound = await User.findOne({ token: travelerToken });
+	const hostFound = await User.findOne({
+		email: { $regex: new RegExp(hostEmail, 'i') },
 	});
 
-	const getDates = (startDate, endDate) => {
-		let datesToCheckFromReq = [];
-		let dif = new Date(endDate).getTime() - new Date(startDate).getTime();
-		let daysNbr = dif / (1000 * 3600 * 24);
-		for (let j = 0; j <= daysNbr; j++) {
-			const result = new Date(startDate);
-			const dateToCheck = result.setDate(result.getDate() + j);
-			datesToCheckFromReq.push(new Date(dateToCheck).toLocaleDateString());
-		}
-		return datesToCheckFromReq;
-	};
+	if (!travelerFound || !hostFound)
+		return res.json({
+			result: false,
+			error: 'Aucun utilisateur trouvé',
+		});
 
-	// Dates to be checked
-	const datesFromReq = getDates(startDate, endDate);
+	const traveler = travelerFound._id;
+	const host = hostFound._id;
 
-	// Check start date and end date interval
-	if (sameBookings.length) {
-		let datesToCheck = [];
-		for (let i = 0; i < sameBookings.length; i++) {
-			let dif =
-				new Date(sameBookings[i].endDate).getTime() -
-				new Date(sameBookings[i].startDate).getTime();
-			let daysNbr = dif / (1000 * 3600 * 24);
+	//  Check if traveler has already request a booking to host or reverse
+	const travelBookings = await Booking.find({ $and: [{ traveler }, { host }] });
+	const hostBookings = await Booking.find({
+		$and: [{ traveler: host }, { host: traveler }],
+	});
+	const existingBookings = [...travelBookings, ...hostBookings];
 
-			for (let j = 0; j <= daysNbr; j++) {
-				const result = new Date(sameBookings[i].startDate);
-				const dateToCheck = result.setDate(result.getDate() + j);
-				datesToCheck.push(new Date(dateToCheck).toLocaleDateString());
-			}
-		}
+	if (existingBookings.length) {
+		// Dates to be checked
+		const datesFromReq = getDates(startDate, endDate);
 
-		for (let i = 0; i < datesFromReq.length; i++) {
-			if (datesToCheck.includes(datesFromReq[i])) {
-				// dates not compatible
-				res.json({
-					result: false,
-					error: 'Vous avez déjà demandé un travel sur ce créneau',
-				});
-				return;
-			}
-		}
+		// All already booked dates
+		const bookingsDates = existingBookings
+			?.map((b) => getDates(b.startDate, b.endDate))
+			.reduce((a, b) => [...a, ...b]);
+
+		// dates not compatible
+		if (datesFromReq.some((d) => bookingsDates.includes(d)))
+			return res.json({
+				result: false,
+				error: 'Vous avez déjà demandé un travel sur ce créneau',
+			});
 	}
 
-	// Check start date and end date interval
-	if (reverseBookings.length) {
-		let datesToCheck = [];
-		for (let i = 0; i < reverseBookings.length; i++) {
-			let dif =
-				new Date(reverseBookings[i].endDate).getTime() -
-				new Date(reverseBookings[i].startDate).getTime();
-			let daysNbr = dif / (1000 * 3600 * 24);
-
-			for (let j = 0; j <= daysNbr; j++) {
-				const result = new Date(reverseBookings[i].startDate);
-				const dateToCheck = result.setDate(result.getDate() + j);
-				datesToCheck.push(new Date(dateToCheck).toLocaleDateString());
-			}
-		}
-
-		for (let i = 0; i < datesFromReq.length; i++) {
-			// dates not compatible
-			if (datesToCheck.includes(datesFromReq[i])) {
-				res.json({
-					result: false,
-					error: 'Cet host vous a déjà fait une demande sur ce créneau',
-				});
-				return;
-			}
-		}
-	}
-
+	// create booking
 	const newBooking = new Booking({
 		traveler,
 		host,
@@ -104,57 +63,58 @@ router.post('/request', async (req, res) => {
 		babiesNumber,
 	});
 
-	newBooking.save().then(async (data) => {
-		// Verify if chatChannel does not already exist
-		const chatExists = await ChatChannel.find().or([
-			{ name: traveler + host },
-			{ name: host + traveler },
-		]);
+	const createdBooking = await newBooking.save();
 
-		const travelerFound = await User.findById(traveler);
-		const hostFound = await User.findById(host);
+	if (!createdBooking)
+		return res.json({ result: false, error: 'Can not create new booking' });
 
-		travelerFound.bookings.push(data._id);
-		hostFound.bookings.push(data._id);
+	// save new booking for both traveler and host
+	travelerFound.bookings.push(createdBooking._id);
+	hostFound.bookings.push(createdBooking._id);
 
-		if (!chatExists.length) {
-			const newChatChannel = new ChatChannel({
-				host,
-				traveler,
-				name: traveler + host,
-				messages: [],
-				createdAt: new Date(),
-			});
+	const newTraveler = await travelerFound.save();
+	const newHost = await hostFound.save();
 
-			newChatChannel.save().then(async (resp) => {
-				travelerFound.chatChannels.push(resp._id);
-				hostFound.chatChannels.push(resp._id);
-				const newTraveler = await travelerFound.save();
-				const newHost = await hostFound.save();
+	if (!newTraveler || !newHost)
+		return res
+			.status(409)
+			.json({ result: false, error: 'Can not add booking id to user' });
 
-				if (!newTraveler || !newHost)
-					return res
-						.status(409)
-						.json({ result: false, error: 'Can not add booking id to user' });
+	// Verify if chatChannel does not already exist
+	const chatExists = await ChatChannel.find().or([
+		{ name: traveler + host },
+		{ name: host + traveler },
+	]);
 
-				res.json({
-					result: true,
-				});
-			});
-			return;
-		}
+	if (!chatExists.length) {
+		const newChatChannel = new ChatChannel({
+			host,
+			traveler,
+			name: traveler + host,
+			messages: [],
+			createdAt: new Date(),
+		});
 
-		const newTraveler = await travelerFound.save();
-		const newHost = await hostFound.save();
+		const createdChatChannel = await newChatChannel.save();
 
-		if (!newTraveler || !newHost)
+		if (!createdChatChannel)
+			return res.json({ result: false, error: 'Can not create new chat' });
+
+		// save new chat for both traveler and host
+		newTraveler.chatChannels.push(createdChatChannel._id);
+		newHost.chatChannels.push(createdChatChannel._id);
+
+		const updatedNewTraveler = await travelerFound.save();
+		const updatedNewHost = await hostFound.save();
+
+		if (!updatedNewTraveler || !updatedNewHost)
 			return res
 				.status(409)
-				.json({ result: false, error: 'Can not add booking id to user' });
+				.json({ result: false, error: 'Can not add chat id to user' });
+	}
 
-		res.json({
-			result: true,
-		});
+	res.json({
+		result: true,
 	});
 });
 
@@ -165,62 +125,24 @@ router.get('/:token', (req, res) => {
 			path: 'bookings',
 			populate: [{ path: 'traveler' }, { path: 'host' }],
 		})
-		.then((userFound) => {
+		.then((user) => {
 			res.json({
 				result: true,
-				user: userFound,
+				user,
 			});
 		});
 });
-
-/* GET /exists/:traveler/:host - if exists returns bookings between two users*/
-// router.get(`/exists/:traveler/:host`, (req, res) => {
-// 	Booking.findOne({
-// 		traveler: req.params.traveler,
-// 		host: req.params.host,
-// 	}).then((data) => {
-// 		if (data) {
-// 			res.json({
-// 				result: true,
-// 				booking: data,
-// 			});
-// 		} else {
-// 			res.json({
-// 				result: false,
-// 				error: 'Aucun contact trouvé',
-// 			});
-// 		}
-// 	});
-// });
-
-/* GET /traveler/:token - get user's chatchannels */
-// router.get(`/traveler/:token`, (req, res) => {
-// 	User.findOne({ token: req.params.token })
-// 		.populate('chatChannels')
-// 		.then((data) => {
-// 			if (data) {
-// 				res.json({
-// 					result: true,
-// 					chats: data.chatChannels,
-// 				});
-// 			} else {
-// 				res.json({
-// 					result: false,
-// 					error: 'Aucun contact trouvé',
-// 				});
-// 			}
-// 		});
-// });
 
 /* PATCH /update/:bookingId - update done */
 router.patch('/update/:bookingId', (req, res) => {
 	const { bookingId } = req.params;
 
-	Booking.findByIdAndUpdate(bookingId, { status: 'Confirmé' }).exec();
+	Booking.findByIdAndUpdate(bookingId, { status: true }).exec();
+
 	res.json({ result: true });
 });
 
-/* DELETE /delete/:bookingId - remove the booking using its id */
+/* DELETE /delete/:bookingId - remove the booking and chat using its id */
 router.delete('/delete/:bookingId', async (req, res) => {
 	const { bookingId } = req.params;
 	const booking = await Booking.findById(bookingId);
@@ -247,20 +169,17 @@ router.delete('/delete/:bookingId', async (req, res) => {
 		$and: [{ traveler: host._id }, { host: traveler._id }],
 	});
 
-	console.log('bookings trouvés 1 : ', hostBookingsFound);
-	console.log('bookings trouvés 2 : ', travelerBookingsFound);
-
 	//delete chatchannel
 	if (hostBookingsFound.length === 0 && travelerBookingsFound.length === 0) {
 		ChatChannel.findOneAndDelete({
 			$and: [{ traveler: traveler._id }, { host: host._id }],
-		}).then((resp) => {
-			console.log('Chat supprimé : ', resp);
+		}).then((chat) => {
 			User.findByIdAndUpdate(booking.traveler, {
-				$pull: { chatChannels: resp._id },
+				$pull: { chatChannels: chat._id },
 			}).exec();
+
 			User.findByIdAndUpdate(booking.host, {
-				$pull: { chatChannels: resp._id },
+				$pull: { chatChannels: chat._id },
 			}).exec();
 		});
 	}

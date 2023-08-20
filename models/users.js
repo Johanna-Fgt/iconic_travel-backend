@@ -6,7 +6,7 @@ const ERRORS = {
 };
 
 const DEFAULT_PHOTO =
-	'https://res.cloudinary.com/dvmipcwy7/image/upload/v1690571975/ezulphnetoa65bodxzwn.jpg';
+	'https://res.cloudinary.com/dvmipcwy7/image/upload/v1690571975/avn9ae0k3ntotijuibxa.jpg';
 const DEFAULT_LANGUAGE = 'FR';
 const DEFAULT_HOBBY = 'voyage';
 const DEFAULT_DESCRIPTION = 'Je dois mettre à jour mon profil !';

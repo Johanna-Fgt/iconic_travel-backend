@@ -6,7 +6,7 @@ const bookingSchema = mongoose.Schema({
 	done: { type: Boolean, default: false },
 	startDate: Date,
 	endDate: Date,
-	status: { type: String, default: 'Demande en attente' },
+	status: { type: Boolean, default: false },
 	adultsNumber: Number,
 	childrenNumber: Number,
 	babiesNumber: Number,

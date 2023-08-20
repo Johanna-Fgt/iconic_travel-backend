@@ -74,21 +74,23 @@ router.post('/signup', async (req, res) => {
 });
 
 /* POST /upload */
-router.post('/upload', async (req, res) => {
-	// save avatar in temporary folder
-	const photoPath = `./tmp/${uniqid()}.jpg`;
-	const resultMove = await req.files.avatar.mv(photoPath);
+// router.post('/upload', async (req, res) => {
+// 	// save avatar in temporary folder
+// 	const photoPath = `./tmp/${uniqid()}.jpg`;
+// 	const resultMove = await req.files.avatar.mv(photoPath);
 
-	if (!resultMove) {
-		// upload avatar to cloudinary and remove from temporary folder
-		const resultCloudinary = await cloudinary.uploader.upload(photoPath);
-		fs.unlinkSync(photoPath);
+// 	if (!resultMove) {
+// 		// upload avatar to cloudinary and remove from temporary folder
+// 		const resultCloudinary = await cloudinary.uploader.upload(photoPath);
+// 		// const resultCloudinary = await cloudinary.uploader.upload_stream(photoPath);
 
-		res.json({ result: true, url: resultCloudinary.secure_url });
-	} else {
-		res.json({ result: false, error: resultMove });
-	}
-});
+// 		fs.unlinkSync(photoPath);
+
+// 		res.json({ result: true, url: resultCloudinary.secure_url });
+// 	} else {
+// 		res.json({ result: false, error: resultMove });
+// 	}
+// });
 
 /* POST /signin*/
 router.post('/signin', (req, res) => {
@@ -231,9 +233,9 @@ router.delete('/deletepicture/:token', (req, res) => {
 	User.findOne({ token: req.params.token }).then((user) => {
 		if (user) {
 			const publicId = user.avatarUrl.match(regex);
-
+			console.log(publicId);
 			// check that publicId is not the default one before removing from cloudinary
-			publicId !== 'ezulphnetoa65bodxzwn' &&
+			publicId !== 'avn9ae0k3ntotijuibxa' &&
 				cloudinary.api
 					.delete_resources([publicId[1]], {
 						type: 'upload',
@@ -244,29 +246,6 @@ router.delete('/deletepicture/:token', (req, res) => {
 			res.json({ result: true });
 		} else {
 			res.json({ result: false, error: 'User not found' });
-		}
-	});
-});
-
-router.get('/getId/:token/:email', (req, res) => {
-	User.findOne({ token: req.params.token }).then((user) => {
-		if (user) {
-			User.findOne({ email: req.params.email }).then((userFound) => {
-				if (userFound) {
-					res.json({
-						result: true,
-						hostId: userFound._id,
-						travelerId: user._id,
-					});
-				} else {
-					res.json({
-						result: false,
-						error: 'Aucun utilisateur trouvé',
-					});
-				}
-			});
-		} else {
-			res.json({ result: false, error: 'Invalid token' });
 		}
 	});
 });
