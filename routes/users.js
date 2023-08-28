@@ -175,7 +175,18 @@ router.put('/update/:token', async (req, res) => {
 	const user = await User.findOne({ token: req.params.token });
 	const keys = Object.keys(req.body);
 
-	if (keys.find((key) => !ckeckTypes(req.body, user, key)))
+	if (keys.includes('dateOfBirth') && !isDate(req.body.dateOfBirth)) {
+		return res.status(400).json({
+			result: false,
+			error: `Problem with date of birth value type`,
+		});
+	}
+
+	if (
+		keys
+			.filter((key) => key !== 'dateOfBirth')
+			.find((key) => !ckeckTypes(req.body, user, key))
+	)
 		return res.status(400).json({
 			result: false,
 			error: `Problem with update due to bad value type`,
