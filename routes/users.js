@@ -184,7 +184,7 @@ router.put('/update/:token', async (req, res) => {
 
 	if (
 		keys
-			.filter((key) => key !== 'dateOfBirth')
+			.filter((key) => key !== 'dateOfBirth' && key !== 'city')
 			.find((key) => !ckeckTypes(req.body, user, key))
 	)
 		return res.status(400).json({
