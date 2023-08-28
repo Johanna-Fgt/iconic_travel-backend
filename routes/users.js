@@ -175,12 +175,22 @@ router.put('/update/:token', async (req, res) => {
 	const user = await User.findOne({ token: req.params.token });
 	const keys = Object.keys(req.body);
 
-	// if (keys.includes('dateOfBirth') && !isDate(req.body.dateOfBirth)) {
-	// 	return res.status(400).json({
-	// 		result: false,
-	// 		error: `Problem with date of birth value type`,
-	// 	});
-	// }
+	if (keys.includes('dateOfBirth') && !isDate(req.body.dateOfBirth)) {
+		return res.status(400).json({
+			result: false,
+			error: `Problem with date of birth value type`,
+		});
+	}
+
+	if (
+		keys.includes('city') &&
+		(!isNumber(req.body.city.latitude) || !isNumber(req.body.city.longitude))
+	) {
+		return res.status(400).json({
+			result: false,
+			error: `Problem with date of birth value type`,
+		});
+	}
 
 	if (
 		keys
